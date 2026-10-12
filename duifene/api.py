@@ -223,6 +223,35 @@ class DuifeneApi:
         ):
             return None
 
+    def fetch_hanzi_answer(self, course: Course) -> str | None:
+        """读取当前汉字签到的答案。
+
+        Returns:
+            按正确顺序排列的 4 个汉字；非汉字签到、无进行中活动或异常返回 None。
+        """
+        headers = {
+            **FORM_HEADERS,
+            "Referer": f"{self._settings.host}/_CheckIn/PC/TeachCheckInList.aspx",
+        }
+        try:
+            response = self._session.post(
+                self._url("/_CheckIn/PC/TeachCheckIn.aspx"),
+                data={"courseid": course.course_id, "moduleid": "7", "classtype": "1"},
+                headers=headers,
+                timeout=self._settings.request_timeout_s,
+            )
+        except requests.exceptions.RequestException:
+            return None
+        if response.status_code != 200:
+            return None
+        soup = BeautifulSoup(response.text, "html.parser")
+        kind = soup.find(id="HFChecktype")
+        key = soup.find(id="HFCheckCodeKey")
+        if kind is None or key is None or kind.get("value") != "4":
+            return None
+        answer = (key.get("value") or "").strip()
+        return answer or None
+
     def _sign_post(
         self, path: str, payload: str, timeout: float | None = None
     ) -> requests.Response:

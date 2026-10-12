@@ -143,6 +143,8 @@ class ActivityProcessor:
                 outcome = self._sign_qr(activity, course)
             elif activity.type == "3":
                 outcome = self._sign_location(activity, course)
+            elif activity.type == "4":
+                outcome = self._sign_hanzi(activity, course)
             else:
                 self._log_course(
                     course, f"活动 {activity.id} 类型未知（{activity.type}），跳过"
@@ -174,6 +176,14 @@ class ActivityProcessor:
         """二维码签到。"""
         self._log_attempt(activity.id, course, f"活动 {activity.id} 提交二维码签到")
         return self._report(activity.id, self._api.sign_by_qr(activity.id), course)
+
+    def _sign_hanzi(self, activity: CheckInActivity, course: Course) -> Outcome:
+        """汉字签到：取正确顺序后按序提交。"""
+        answer = activity.code or self._api.fetch_hanzi_answer(course)
+        if not answer:
+            return Outcome.DEFERRED
+        self._log_attempt(activity.id, course, f"活动 {activity.id} 提交汉字 {answer}")
+        return self._report(activity.id, self._api.sign_by_code(answer), course)
 
     def _sign_location(self, activity: CheckInActivity, course: Course) -> Outcome:
         """定位签到：坐标取自 WS 推送 → 缓存 → 反推。

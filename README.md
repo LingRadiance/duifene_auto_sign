@@ -1,6 +1,6 @@
 # 🎓 对分易自动签到
 
-> 对分易自动签到工具，持续监听对分易课堂签到活动，自动完成签到码 / 二维码 / 定位三类签到
+> 对分易自动签到工具，持续监听对分易课堂签到活动，自动完成签到码 / 二维码 / 定位 / 汉字四类签到
 
 ![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python&logoColor=white)
 ![pywebview](https://img.shields.io/badge/pywebview-%3E%3D5.0-green?logo=web&logoColor=white)
@@ -61,6 +61,7 @@ build_env\Scripts\pyinstaller build.spec --noconfirm
 | 签到码 (type=1) | 直接提交 4 位签到码 |
 | 二维码 (type=2) | 以活动 ID 作为 state 提交（仅微信链接登录有效） |
 | 定位签到 (type=3) | 坐标来源优先级：WS 推送跟随 → 班级缓存 → 三边反推 |
+| 汉字签到 (type=4) | 取4位正确汉字顺序提交 |
 
 ---
 
