@@ -24,6 +24,54 @@ def resource_path(*parts: str) -> str:
     return os.path.join(base, *parts)
 
 
+# WebView2 运行时在注册表中的四个安装通道（正式版 / Beta / Dev / Canary）
+_WEBVIEW2_CLIENT_KEYS = (
+    "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+    "{2CD8A007-E189-409D-A2C8-9AF4EF3C72AA}",
+    "{0D50BFEC-CD6A-4F9A-964C-C7416E3ACB10}",
+    "{65C35B14-6C1D-4122-AC46-7148CC9D6497}",
+)
+
+
+def _has_webview2() -> bool:
+    """检测 WebView2 运行时是否已安装（仅 Windows 需要）。"""
+    if sys.platform != "win32":
+        return True
+    import winreg
+
+    for client_key in _WEBVIEW2_CLIENT_KEYS:
+        for root, prefix in (
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE"),
+            (winreg.HKEY_CURRENT_USER, r"SOFTWARE"),
+        ):
+            try:
+                with winreg.OpenKey(
+                    root, rf"{prefix}\Microsoft\EdgeUpdate\Clients\{client_key}"
+                ) as key:
+                    version, _ = winreg.QueryValueEx(key, "pv")
+            except OSError:
+                continue
+            if version and version != "0.0.0.0":
+                return True
+    return False
+
+
+def _warn_missing_webview2() -> None:
+    """弹出模态提示，告知需安装 WebView2 运行时。"""
+    message = (
+        "未检测到 Microsoft Edge WebView2 运行时，程序无法正常显示界面。\n\n"
+        "请下载并安装 WebView2Setup.exe 后重试：\n"
+        "https://developer.microsoft.com/microsoft-edge/webview2/\n\n"
+    )
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(None, message, "缺少运行环境", 0x10)
+    except Exception:
+        print(message, file=sys.stderr)
+
+
 def _install_loading_overlay(window: webview.Window) -> None:
     """WebView2 冷启动期间在窗体上盖一层原生加载画面。
 
@@ -86,6 +134,9 @@ def _install_loading_overlay(window: webview.Window) -> None:
 
 def main() -> None:
     """创建窗口并进入 pywebview 事件循环。"""
+    if not _has_webview2():
+        _warn_missing_webview2()
+        return
     bridge = Bridge(Settings())
     window = webview.create_window(
         title=f"对分易自动签到 v{__version__}",

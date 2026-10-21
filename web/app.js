@@ -19,7 +19,7 @@
 
   // 微信授权链接（复制按钮与说明步骤共用；此处为原始文本，& 不做 HTML 转义）
   var WECHAT_LINK =
-    "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx1b5650884f657981&redirect_uri=https://www.duifene.com/_FileManage/PdfView.aspx?file=https%3A%2F%2Ffs.duifene.com%2Fres%2Fr2%2Fu6106199%2F%E5%AF%B9%E5%88%86%E6%98%93%E7%99%BB%E5%BD%95_876c9d439ca68ead389c.pdf&response_type=code&snsapi_userinfo&connect_redirect=1#wechat_redirect";
+    "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx1b5650884f657981&redirect_uri=https://www.duifene.com/_FileManage/PdfView.aspx?file=https%3A%2F%2Ffs.duifene.com%2Fres%2Fr2%2Fu6106199%2F%E5%AF%B9%E5%88%86%E6%98%93%E7%99%BB%E5%BD%95_876c9d439ca68ead389c.pdf&response_type=code&scope=snsapi_userinfo&connect_redirect=1#wechat_redirect";
 
   // 说明步骤：字符串为普通文案；{link:true} 处渲染「链接 + 复制按钮」。
   // 注意：不能用 ``step.link`` 判断——字符串经原型链装箱会命中已废弃的
