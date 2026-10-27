@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 import sys
 
-import webview
-
 from duifene import __version__
 from duifene.bridge import Bridge
 from duifene.settings import Settings
@@ -22,6 +20,39 @@ def resource_path(*parts: str) -> str:
     """
     base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base, *parts)
+
+
+def _unblock_downloaded_files(root: str | os.PathLike[str] | None = None) -> int:
+    """Remove Windows' network-origin mark from files in the app directory.
+
+    The .NET Framework refuses to load managed assemblies carrying a
+    ``Zone.Identifier`` stream. Windows adds that stream to files extracted
+    from a downloaded ZIP, which makes pythonnet fail before pywebview can
+    initialize.
+
+    Args:
+        root: Directory to scan. When omitted, scan the frozen app directory.
+
+    Returns:
+        Number of files whose network-origin mark was removed.
+    """
+    if sys.platform != "win32":
+        return 0
+    if root is None:
+        if not getattr(sys, "frozen", False):
+            return 0
+        root = os.path.dirname(os.path.abspath(sys.executable))
+
+    removed = 0
+    for directory, _, filenames in os.walk(os.fspath(root)):
+        for filename in filenames:
+            zone_stream = os.path.join(directory, f"{filename}:Zone.Identifier")
+            try:
+                os.remove(zone_stream)
+            except OSError:
+                continue
+            removed += 1
+    return removed
 
 
 # WebView2 运行时在注册表中的四个安装通道（正式版 / Beta / Dev / Canary）
@@ -134,6 +165,9 @@ def _install_loading_overlay(window: webview.Window) -> None:
 
 def main() -> None:
     """创建窗口并进入 pywebview 事件循环。"""
+    _unblock_downloaded_files()
+    import webview
+
     if not _has_webview2():
         _warn_missing_webview2()
         return
