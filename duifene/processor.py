@@ -203,7 +203,7 @@ class ActivityProcessor:
         point = self._push.take_follow_point()
         if point is not None:
             lon, lat, distance = point
-            if self._is_signed(self._api.sign_by_location(lon, lat)):
+            if self._is_signed(self._api.sign_by_location(course, lon, lat)):
                 self._store.save_center(course.class_id, lon, lat)
                 self._log_signed_location(aid, course, lon, lat, distance)
                 return Outcome.SIGNED
@@ -213,17 +213,18 @@ class ActivityProcessor:
             return Outcome.DEFERRED
 
         cached = self._store.load_center(course.class_id)
-        if cached is not None:
-            if self._is_signed(self._api.sign_by_location(*cached)):
-                self._log_signed_location(aid, course, *cached)
-                return Outcome.SIGNED
+        if cached is not None and self._is_signed(
+            self._api.sign_by_location(course, *cached)
+        ):
+            self._log_signed_location(aid, course, *cached)
+            return Outcome.SIGNED
 
         resolved = self._resolver.resolve(course)
         if resolved is None:
             self._log_result(aid, course, "定位签到失败，未取得教室坐标")
             return Outcome.SKIPPED
         lon, lat, residual = resolved
-        message = self._api.sign_by_location(lon, lat)
+        message = self._api.sign_by_location(course, lon, lat)
         if self._is_signed(message):
             self._store.save_center(course.class_id, lon, lat)
             self._log_signed_location(aid, course, lon, lat, residual)

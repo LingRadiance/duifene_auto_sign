@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 import re
+from collections.abc import Mapping
 from typing import Any
 
 import requests
@@ -253,7 +254,11 @@ class DuifeneApi:
         return answer or None
 
     def _sign_post(
-        self, path: str, payload: str, timeout: float | None = None
+        self,
+        path: str,
+        payload: str,
+        timeout: float | None = None,
+        extra_headers: Mapping[str, str] | None = None,
     ) -> requests.Response:
         """发起签到类请求并施加限流约束。
 
@@ -265,7 +270,11 @@ class DuifeneApi:
         response = self._session.post(
             self._url(path),
             data=payload,
-            headers={**FORM_HEADERS, "Referer": STUDENT_REFERER},
+            headers={
+                **FORM_HEADERS,
+                "Referer": STUDENT_REFERER,
+                **(extra_headers or {}),
+            },
             timeout=timeout or self._settings.request_timeout_s,
         )
         if self._limiter.is_limit_text(response.text):
@@ -305,15 +314,34 @@ class DuifeneApi:
             return "非微信链接登录，二维码无法签到"
         return text
 
-    def sign_by_location(self, longitude: float, latitude: float) -> str | None:
+    @staticmethod
+    def _location_payload(
+        course: Course,
+        user_id: str,
+        longitude: float,
+        latitude: float,
+    ) -> str:
+        """构造与官方签到页面一致的定位提交体。"""
+        return (
+            f"action=signin&cid={course.course_id}&tcid={course.class_id}"
+            f"&sid={user_id}&latitude={latitude}&longitude={longitude}"
+        )
+
+    def sign_by_location(
+        self, course: Course, longitude: float, latitude: float
+    ) -> str | None:
         """定位签到：坐标做微小抖动后提交；异常见 :meth:`_sign_post`。"""
         jitter = self._settings.location_jitter_deg
         lon = round(longitude + random.uniform(-jitter, jitter), 8)
         lat = round(latitude + random.uniform(-jitter, jitter), 8)
+        payload = self._location_payload(
+            course, self._require_user_id(), lon, lat
+        )
         response = self._sign_post(
             "/_CheckIn/CheckInRoomHandler.ashx",
-            f"action=signin&sid={self._require_user_id()}&longitude={lon}&latitude={lat}",
+            payload,
             timeout=15,
+            extra_headers={"X-Requested-With": "XMLHttpRequest"},
         )
         if response.status_code != 200:
             return None
@@ -326,9 +354,11 @@ class DuifeneApi:
         （本次探测已真实签到）。RateLimited 时调用方应中止探测。"""
         response = self._sign_post(
             "/_CheckIn/CheckInRoomHandler.ashx",
-            f"action=signin&cid={course.course_id}&tcid={course.class_id}"
-            f"&sid={self._require_user_id()}&longitude={longitude}&latitude={latitude}",
+            self._location_payload(
+                course, self._require_user_id(), longitude, latitude
+            ),
             timeout=15,
+            extra_headers={"X-Requested-With": "XMLHttpRequest"},
         )
         if response.status_code != 200:
             return None
